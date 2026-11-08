@@ -1,0 +1,60 @@
+import "server-only";
+import { all, get } from "./db";
+
+export type ReportFilter = { from?: string; to?: string };
+
+function range(f: ReportFilter, col: string) {
+  const w: string[] = [];
+  const p: string[] = [];
+  if (f.from) { w.push(`date(${col}) >= date(?)`); p.push(f.from); }
+  if (f.to) { w.push(`date(${col}) <= date(?)`); p.push(f.to); }
+  return { sql: w.length ? " AND " + w.join(" AND ") : "", params: p };
+}
+
+export function buildReport(f: ReportFilter) {
+  const r = range(f, "p.submitted_at");
+  const byStatus = all<{ status: string; n: number }>(
+    `SELECT p.status, COUNT(*) AS n FROM proposals p WHERE 1=1 ${r.sql} GROUP BY p.status ORDER BY n DESC`, ...r.params);
+  const total = byStatus.reduce((s, x) => s + x.n, 0);
+  const n = (s: string) => byStatus.find((x) => x.status === s)?.n ?? 0;
+
+  const byCollege = all<{ college: string; submitted: number; approved: number }>(
+    `SELECT p.college, COUNT(*) AS submitted, SUM(p.status = 'APPROVED') AS approved
+       FROM proposals p WHERE 1=1 ${r.sql} GROUP BY p.college ORDER BY submitted DESC`, ...r.params);
+
+  const byType = all<{ review_type: string | null; n: number }>(
+    `SELECT p.review_type, COUNT(*) AS n FROM proposals p WHERE 1=1 ${r.sql} GROUP BY p.review_type ORDER BY n DESC`, ...r.params);
+
+  const workload = all<{ full_name: string; assigned: number; pending: number; completed: number; overdue: number; avg_days: number | null }>(
+    `SELECT u.full_name,
+            COUNT(a.assignment_id) AS assigned,
+            COALESCE(SUM(a.status = 'PENDING'), 0) AS pending,
+            COALESCE(SUM(a.status = 'SUBMITTED'), 0) AS completed,
+            COALESCE(SUM(a.status = 'PENDING' AND a.due_date < date('now')), 0) AS overdue,
+            ROUND(AVG(CASE WHEN a.submitted_at IS NOT NULL THEN julianday(a.submitted_at) - julianday(a.assigned_at) END), 1) AS avg_days
+       FROM users u LEFT JOIN review_assignments a ON a.reviewer_id = u.user_id
+      WHERE u.role = 'REVIEWER' GROUP BY u.user_id ORDER BY pending DESC, assigned DESC`);
+
+  // Average processing time = first submission → final decision (approved/disapproved).
+  const rd = range(f, "p.submitted_at");
+  const avg = get<{ days: number | null; n: number }>(
+    `SELECT ROUND(AVG(julianday(d.decided_at) - julianday(p.submitted_at)), 1) AS days, COUNT(*) AS n
+       FROM proposals p JOIN decisions d ON d.proposal_id = p.proposal_id
+      WHERE d.decision IN ('APPROVED','DISAPPROVED') ${rd.sql}`, ...rd.params);
+
+  const monthly = all<{ month: string; submitted: number; approved: number }>(
+    `SELECT strftime('%Y-%m', p.submitted_at) AS month, COUNT(*) AS submitted, SUM(p.status = 'APPROVED') AS approved
+       FROM proposals p WHERE 1=1 ${r.sql} GROUP BY month ORDER BY month`, ...r.params);
+
+  return {
+    total,
+    approved: n("APPROVED"),
+    underReview: n("UNDER_REVIEW") + n("FOR_REVIEW"),
+    toCheck: n("SUBMITTED"),
+    pendingRevisions: n("REVISION_REQUIRED") + n("INCOMPLETE"),
+    disapproved: n("DISAPPROVED"),
+    avgProcessingDays: avg?.days ?? null,
+    decidedCount: avg?.n ?? 0,
+    byStatus, byCollege, byType, workload, monthly,
+  };
+}
