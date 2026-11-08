@@ -4,8 +4,7 @@ import type { NextConfig } from "next";
 const root = path.resolve(__dirname);
 
 const nextConfig: NextConfig = {
-  // This app lives in a sub-folder of the portfolio repo; pin the root so Next
-  // doesn't pick up the parent lockfile.
+  // Pin the project root so Next never picks up a lockfile from a parent folder.
   turbopack: { root },
   outputFileTracingRoot: root,
   experimental: {
