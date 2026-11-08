@@ -4,9 +4,9 @@
   "private": true,
   "description": "Research Ethics Committee Management System (NDDU ERC)",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "node scripts/next.mjs dev",
+    "build": "node scripts/next.mjs build",
+    "start": "node scripts/next.mjs start",
     "lint": "eslint",
     "test:e2e": "node tests/e2e.cjs",
     "reset-db": "node -e \"require('fs').rmSync('data',{recursive:true,force:true})\""
@@ -26,5 +26,8 @@
     "eslint-config-next": "16.3.5",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=22.5.0"
   }
 }

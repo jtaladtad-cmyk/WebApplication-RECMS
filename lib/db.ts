@@ -61,7 +61,9 @@ export function all<T>(sql: string, ...params: (string | number | null)[]): T[] 
 }
 
 export function get<T>(sql: string, ...params: (string | number | null)[]): T | undefined {
-  return db().prepare(sql).get(...params) as T | undefined;
+  // Not StatementSync.get(): on Node 22.5 it returns a row of NULLs instead of
+  // undefined when nothing matches, which makes every existence check true.
+  return (db().prepare(sql).all(...params) as T[])[0];
 }
 
 export function run(sql: string, ...params: (string | number | null)[]) {

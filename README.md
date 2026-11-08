@@ -10,7 +10,10 @@ notifications and reports into one system.
 
 ## Run it
 
-Requires **Node.js 22.5+**, which is needed for `node:sqlite`.
+Requires **Node.js 22.5 or newer** (tested on 22.5.1 and 22.23). Always start the app with the npm scripts
+below. On Node 22.5–22.12 they automatically enable the two features those versions keep behind flags
+(the built-in `node:sqlite` database and ES-module loading used by Tailwind). Newer Node needs no flags.
+Check your version with `node -v`.
 
 ```bash
 git clone https://github.com/jtaladtad-cmyk/WebApplication-RECMS.git recms
