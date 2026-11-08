@@ -25,7 +25,7 @@ const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
 export async function createSession(userId: number) {
   const token = randomBytes(32).toString("base64url");
   const expires = new Date(Date.now() + SESSION_DAYS * 864e5);
-  run(
+  await run(
     "INSERT INTO sessions (session_id, user_id, expires_at) VALUES (?, ?, ?)",
     sha256(token),
     userId,
@@ -43,7 +43,7 @@ export async function createSession(userId: number) {
 export async function deleteSession() {
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
-  if (token) run("DELETE FROM sessions WHERE session_id = ?", sha256(token));
+  if (token) await run("DELETE FROM sessions WHERE session_id = ?", sha256(token));
   store.delete(SESSION_COOKIE);
 }
 
@@ -51,7 +51,7 @@ export async function deleteSession() {
 export const getCurrentUser = cache(async (): Promise<User | null> => {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
-  const user = get<User>(
+  const user = await get<User>(
     `SELECT u.user_id, u.full_name, u.email, u.role, u.college, u.contact_no, u.is_active, u.created_at
        FROM sessions s JOIN users u ON u.user_id = s.user_id
       WHERE s.session_id = ? AND s.expires_at > ? AND u.is_active = 1`,

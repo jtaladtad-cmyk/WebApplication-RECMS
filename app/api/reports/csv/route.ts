@@ -14,13 +14,13 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const from = isDate(url.searchParams.get("from"));
   const to = isDate(url.searchParams.get("to"));
-  const r = buildReport({ from, to });
+  const r = await buildReport({ from, to });
 
   const where: string[] = [];
   const params: string[] = [];
   if (from) { where.push("date(p.submitted_at) >= date(?)"); params.push(from); }
   if (to) { where.push("date(p.submitted_at) <= date(?)"); params.push(to); }
-  const rows = all<Record<string, string | number | null>>(
+  const rows = await all<Record<string, string | number | null>>(
     `SELECT p.reference_no, p.title, u.full_name AS researcher, p.college, p.research_type, p.review_type,
             p.status, p.current_version, p.submitted_at, p.updated_at, c.clearance_no
        FROM proposals p JOIN users u ON u.user_id = p.researcher_id

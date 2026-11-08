@@ -33,7 +33,7 @@ const NAV: Record<Role, { href: string; label: string }[]> = {
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  const unread = unreadCount(user.user_id);
+  const unread = await unreadCount(user.user_id);
   return (
     <div className="min-h-screen">
       <header className="no-print border-b border-brand-800 bg-brand-900 text-white">

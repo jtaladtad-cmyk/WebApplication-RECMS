@@ -14,19 +14,19 @@ export const metadata: Metadata = { title: "Review" };
 
 export default async function ReviewPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: SearchParams }) {
   const user = await requireUser("REVIEWER");
-  const a = get<{ assignment_id: number; proposal_id: number; reviewer_id: number; version_no: number; due_date: string; status: string; recommendation: string | null; comments: string | null; submitted_at: string | null }>(
+  const a = await get<{ assignment_id: number; proposal_id: number; reviewer_id: number; version_no: number; due_date: string; status: string; recommendation: string | null; comments: string | null; submitted_at: string | null }>(
     "SELECT * FROM review_assignments WHERE assignment_id = ?",
     Number((await params).id),
   );
   if (!a || a.reviewer_id !== user.user_id) notFound();
-  const p = getProposal(a.proposal_id)!;
-  const docs = all<{ document_id: number; doc_type: string; file_name: string; size_bytes: number }>(
+  const p = (await getProposal(a.proposal_id))!;
+  const docs = await all<{ document_id: number; doc_type: string; file_name: string; size_bytes: number }>(
     `SELECT d.document_id, d.doc_type, d.file_name, d.size_bytes FROM documents d
        JOIN proposal_versions v ON v.version_id = d.version_id
       WHERE v.proposal_id = ? AND v.version_no <= ? ORDER BY v.version_no DESC, d.doc_type`,
     p.proposal_id, a.version_no,
   );
-  const changes = get<{ change_summary: string | null }>(
+  const changes = await get<{ change_summary: string | null }>(
     "SELECT change_summary FROM proposal_versions WHERE proposal_id = ? AND version_no = ?",
     p.proposal_id, a.version_no,
   );

@@ -13,54 +13,54 @@ import { Badge, Flash, Section, type SearchParams } from "@/components/ui";
 type Doc = { document_id: number; version_no: number; doc_type: string; file_name: string; size_bytes: number; uploaded_at: string; change_summary: string | null };
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
-  const p = getProposal(Number((await params).id));
+  const p = await getProposal(Number((await params).id));
   return { title: p?.reference_no ?? "Proposal" };
 }
 
 export default async function ProposalDetail({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: SearchParams }) {
   const user = await requireUser();
-  const p = getProposal(Number((await params).id));
-  if (!p || !canViewProposal(user, p)) notFound();
+  const p = await getProposal(Number((await params).id));
+  if (!p || !await canViewProposal(user, p)) notFound();
 
   const staff = isStaff(user);
   const isOwner = user.user_id === p.researcher_id;
-  const assignments = getAssignments(p.proposal_id);
+  const assignments = await getAssignments(p.proposal_id);
   const current = assignments.filter((a) => a.version_no === p.current_version);
   const pendingCurrent = current.filter((a) => a.status === "PENDING").length;
-  const decisions = all<{ decision_id: number; version_no: number; decision: string; remarks: string | null; decided_at: string; decided_by_name: string }>(
+  const decisions = await all<{ decision_id: number; version_no: number; decision: string; remarks: string | null; decided_at: string; decided_by_name: string }>(
     `SELECT d.*, u.full_name AS decided_by_name FROM decisions d JOIN users u ON u.user_id = d.decided_by
       WHERE d.proposal_id = ? ORDER BY d.decided_at DESC`,
     p.proposal_id,
   );
   const decidedVersions = new Set(decisions.map((d) => d.version_no));
-  const checks = all<{ check_id: number; version_no: number; is_complete: number; remarks: string | null; checked_at: string; checked_by_name: string }>(
+  const checks = await all<{ check_id: number; version_no: number; is_complete: number; remarks: string | null; checked_at: string; checked_by_name: string }>(
     `SELECT c.*, u.full_name AS checked_by_name FROM completeness_checks c JOIN users u ON u.user_id = c.checked_by
       WHERE c.proposal_id = ? ORDER BY c.checked_at DESC`,
     p.proposal_id,
   );
-  const docs = all<Doc>(
+  const docs = await all<Doc>(
     `SELECT d.document_id, v.version_no, d.doc_type, d.file_name, d.size_bytes, d.uploaded_at, v.change_summary
        FROM documents d JOIN proposal_versions v ON v.version_id = d.version_id
       WHERE v.proposal_id = ? ORDER BY v.version_no DESC, d.doc_type`,
     p.proposal_id,
   );
   const versions = [...new Set(docs.map((d) => d.version_no))];
-  const history = all<{ history_id: number; from_status: string | null; to_status: string; note: string | null; changed_at: string; by_name: string }>(
+  const history = await all<{ history_id: number; from_status: string | null; to_status: string; note: string | null; changed_at: string; by_name: string }>(
     `SELECT h.*, u.full_name AS by_name FROM status_history h JOIN users u ON u.user_id = h.changed_by
       WHERE h.proposal_id = ? ORDER BY h.changed_at DESC, h.history_id DESC`,
     p.proposal_id,
   );
-  const clearance = get<{ clearance_no: string; issued_at: string; valid_until: string }>(
+  const clearance = await get<{ clearance_no: string; issued_at: string; valid_until: string }>(
     "SELECT clearance_no, issued_at, valid_until FROM ethics_clearances WHERE proposal_id = ?",
     p.proposal_id,
   );
-  const meetings = all<{ meeting_id: number; title: string; scheduled_at: string; venue: string }>(
+  const meetings = await all<{ meeting_id: number; title: string; scheduled_at: string; venue: string }>(
     `SELECT m.meeting_id, m.title, m.scheduled_at, m.venue FROM meetings m
        JOIN meeting_proposals mp ON mp.meeting_id = m.meeting_id WHERE mp.proposal_id = ? ORDER BY m.scheduled_at`,
     p.proposal_id,
   );
   const reviewers = staff
-    ? all<{ user_id: number; full_name: string; college: string | null; pending: number }>(
+    ? await all<{ user_id: number; full_name: string; college: string | null; pending: number }>(
         `SELECT u.user_id, u.full_name, u.college,
                 (SELECT COUNT(*) FROM review_assignments a WHERE a.reviewer_id = u.user_id AND a.status = 'PENDING') AS pending
            FROM users u WHERE u.role = 'REVIEWER' AND u.is_active = 1 ORDER BY pending, u.full_name`,

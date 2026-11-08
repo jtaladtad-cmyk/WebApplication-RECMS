@@ -31,7 +31,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Se
     where.push("(p.reference_no LIKE ? OR p.title LIKE ? OR u.full_name LIKE ? OR p.college LIKE ?)");
     params.push(...Array(4).fill(`%${q}%`));
   }
-  const rows = all<Proposal>(
+  const rows = await all<Proposal>(
     `${PROPOSAL_SELECT} ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY p.updated_at DESC`,
     ...params,
   );

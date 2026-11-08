@@ -5,7 +5,7 @@ A web app for the **Notre Dame of Dadiangas University Ethics Research Committee
 submissions, completeness checks, reviewer assignment, reviews, revisions, decisions, meetings, clearances,
 notifications and reports into one system.
 
-- **Stack:** Next.js 16 (App Router, Server Actions), React 19, Tailwind CSS 4, SQLite via Node's built-in `node:sqlite`. There are no native database dependencies.
+- **Stack:** Next.js 16 (App Router, Server Actions), React 19, Tailwind CSS 4. Database: SQLite through `@libsql/client`, which is a local file in development and [Turso](https://turso.tech) in production. Uploaded documents: local folder in development and private [Vercel Blob](https://vercel.com/docs/vercel-blob) in production.
 - **ERD and workflow:** see [`docs/ERD.md`](docs/ERD.md).
 
 ## Run it
@@ -84,6 +84,20 @@ session cookies are `Secure` (HTTPS only). If you must serve it over plain HTTP 
 **Security notes:** passwords are hashed with scrypt; sessions are random tokens stored hashed in the database
 in `httpOnly` cookies. Every page, action and download checks the user's role and ownership server-side.
 Reviewer identities are hidden from researchers.
+
+## Deploy to Vercel
+
+Vercel doesn't keep files between requests, so production needs hosted storage. Add these environment variables
+to the Vercel project (**Settings → Environment Variables**), then redeploy:
+
+| Variable | Where to get it |
+| --- | --- |
+| `TURSO_DATABASE_URL` | Turso dashboard, or Vercel **Storage → Create → Turso** (connects automatically) |
+| `TURSO_AUTH_TOKEN` | Same as above |
+| `BLOB_READ_WRITE_TOKEN` | Vercel **Storage → Create → Blob** (connects automatically) |
+
+Without these variables the app still runs locally, using `data/`, but it won't work on Vercel.
+The first request on an empty Turso database creates the tables and the demo accounts.
 
 ## Project layout
 

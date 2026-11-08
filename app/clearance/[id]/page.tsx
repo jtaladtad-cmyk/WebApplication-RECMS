@@ -10,9 +10,9 @@ export const metadata: Metadata = { title: "Ethics clearance" };
 
 export default async function ClearancePage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
-  const p = getProposal(Number((await params).id));
+  const p = await getProposal(Number((await params).id));
   if (!p || (p.researcher_id !== user.user_id && !isStaff(user))) notFound();
-  const c = get<{ clearance_no: string; issued_at: string; valid_until: string; issued_by_name: string }>(
+  const c = await get<{ clearance_no: string; issued_at: string; valid_until: string; issued_by_name: string }>(
     `SELECT c.clearance_no, c.issued_at, c.valid_until, u.full_name AS issued_by_name
        FROM ethics_clearances c JOIN users u ON u.user_id = c.issued_by WHERE c.proposal_id = ?`,
     p.proposal_id,

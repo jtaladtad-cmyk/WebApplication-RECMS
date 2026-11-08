@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "My reviews" };
 export default async function ReviewsPage({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireUser("REVIEWER");
   const today = new Date().toISOString().slice(0, 10);
-  const rows = all<{ assignment_id: number; reference_no: string; title: string; review_type: string | null; version_no: number; due_date: string; status: string; recommendation: string | null; assigned_at: string }>(
+  const rows = await all<{ assignment_id: number; reference_no: string; title: string; review_type: string | null; version_no: number; due_date: string; status: string; recommendation: string | null; assigned_at: string }>(
     `SELECT a.assignment_id, p.reference_no, p.title, p.review_type, a.version_no, a.due_date, a.status, a.recommendation, a.assigned_at
        FROM review_assignments a JOIN proposals p ON p.proposal_id = a.proposal_id
       WHERE a.reviewer_id = ? ORDER BY a.status = 'SUBMITTED', a.due_date`,

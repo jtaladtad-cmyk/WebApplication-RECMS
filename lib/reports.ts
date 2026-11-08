@@ -11,21 +11,21 @@ function range(f: ReportFilter, col: string) {
   return { sql: w.length ? " AND " + w.join(" AND ") : "", params: p };
 }
 
-export function buildReport(f: ReportFilter) {
+export async function buildReport(f: ReportFilter) {
   const r = range(f, "p.submitted_at");
-  const byStatus = all<{ status: string; n: number }>(
+  const byStatus = await all<{ status: string; n: number }>(
     `SELECT p.status, COUNT(*) AS n FROM proposals p WHERE 1=1 ${r.sql} GROUP BY p.status ORDER BY n DESC`, ...r.params);
-  const total = byStatus.reduce((s, x) => s + x.n, 0);
+  const total = byStatus.reduce((s, x) => s + Number(x.n), 0);
   const n = (s: string) => byStatus.find((x) => x.status === s)?.n ?? 0;
 
-  const byCollege = all<{ college: string; submitted: number; approved: number }>(
+  const byCollege = await all<{ college: string; submitted: number; approved: number }>(
     `SELECT p.college, COUNT(*) AS submitted, SUM(p.status = 'APPROVED') AS approved
        FROM proposals p WHERE 1=1 ${r.sql} GROUP BY p.college ORDER BY submitted DESC`, ...r.params);
 
-  const byType = all<{ review_type: string | null; n: number }>(
+  const byType = await all<{ review_type: string | null; n: number }>(
     `SELECT p.review_type, COUNT(*) AS n FROM proposals p WHERE 1=1 ${r.sql} GROUP BY p.review_type ORDER BY n DESC`, ...r.params);
 
-  const workload = all<{ full_name: string; assigned: number; pending: number; completed: number; overdue: number; avg_days: number | null }>(
+  const workload = await all<{ full_name: string; assigned: number; pending: number; completed: number; overdue: number; avg_days: number | null }>(
     `SELECT u.full_name,
             COUNT(a.assignment_id) AS assigned,
             COALESCE(SUM(a.status = 'PENDING'), 0) AS pending,
@@ -37,12 +37,12 @@ export function buildReport(f: ReportFilter) {
 
   // Average processing time = first submission → final decision (approved/disapproved).
   const rd = range(f, "p.submitted_at");
-  const avg = get<{ days: number | null; n: number }>(
+  const avg = await get<{ days: number | null; n: number }>(
     `SELECT ROUND(AVG(julianday(d.decided_at) - julianday(p.submitted_at)), 1) AS days, COUNT(*) AS n
        FROM proposals p JOIN decisions d ON d.proposal_id = p.proposal_id
       WHERE d.decision IN ('APPROVED','DISAPPROVED') ${rd.sql}`, ...rd.params);
 
-  const monthly = all<{ month: string; submitted: number; approved: number }>(
+  const monthly = await all<{ month: string; submitted: number; approved: number }>(
     `SELECT strftime('%Y-%m', p.submitted_at) AS month, COUNT(*) AS submitted, SUM(p.status = 'APPROVED') AS approved
        FROM proposals p WHERE 1=1 ${r.sql} GROUP BY month ORDER BY month`, ...r.params);
 

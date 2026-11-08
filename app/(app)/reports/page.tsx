@@ -14,7 +14,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
   const sp = await searchParams;
   const from = isDate(sp.from) ? sp.from : undefined;
   const to = isDate(sp.to) ? sp.to : undefined;
-  const r = buildReport({ from, to });
+  const r = await buildReport({ from, to });
   const qs = new URLSearchParams({ ...(from && { from }), ...(to && { to }) }).toString();
   const maxMonth = Math.max(1, ...r.monthly.map((m) => m.submitted));
 

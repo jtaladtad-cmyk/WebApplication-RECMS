@@ -8,11 +8,11 @@ import { Badge, Empty, Flash, PageHeader, Section, Stat, type SearchParams } fro
 
 export const metadata: Metadata = { title: "Dashboard" };
 
-const count = (sql: string, ...p: (string | number)[]) => get<{ n: number }>(sql, ...p)?.n ?? 0;
+const count = async (sql: string, ...p: (string | number)[]) => Number((await get<{ n: number }>(sql, ...p))?.n) || 0;
 
 export default async function Dashboard({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireUser();
-  sendDeadlineReminders();
+  await sendDeadlineReminders();
   return (
     <>
       <PageHeader title={`Welcome, ${user.full_name.split(" ")[0]}`} subtitle={new Date().toLocaleDateString("en-PH", { dateStyle: "full", timeZone: "Asia/Manila" })} />
@@ -53,8 +53,8 @@ function ProposalTable({ rows, showResearcher = false }: { rows: Proposal[]; sho
   );
 }
 
-function ResearcherDash({ user }: { user: User }) {
-  const rows = all<Proposal>(`${PROPOSAL_SELECT} WHERE p.researcher_id = ? ORDER BY p.updated_at DESC`, user.user_id);
+async function ResearcherDash({ user }: { user: User }) {
+  const rows = await all<Proposal>(`${PROPOSAL_SELECT} WHERE p.researcher_id = ? ORDER BY p.updated_at DESC`, user.user_id);
   const by = (s: string[]) => rows.filter((r) => s.includes(r.status)).length;
   const action = rows.filter((r) => r.status === "INCOMPLETE" || r.status === "REVISION_REQUIRED");
   return (
@@ -84,15 +84,15 @@ function ResearcherDash({ user }: { user: User }) {
   );
 }
 
-function ReviewerDash({ user }: { user: User }) {
+async function ReviewerDash({ user }: { user: User }) {
   const today = new Date().toISOString().slice(0, 10);
-  const pending = all<{ assignment_id: number; reference_no: string; title: string; due_date: string; version_no: number }>(
+  const pending = await all<{ assignment_id: number; reference_no: string; title: string; due_date: string; version_no: number }>(
     `SELECT a.assignment_id, p.reference_no, p.title, a.due_date, a.version_no
        FROM review_assignments a JOIN proposals p ON p.proposal_id = a.proposal_id
       WHERE a.reviewer_id = ? AND a.status = 'PENDING' ORDER BY a.due_date`,
     user.user_id,
   );
-  const done = count("SELECT COUNT(*) AS n FROM review_assignments WHERE reviewer_id = ? AND status = 'SUBMITTED'", user.user_id);
+  const done = await count("SELECT COUNT(*) AS n FROM review_assignments WHERE reviewer_id = ? AND status = 'SUBMITTED'", user.user_id);
   const overdue = pending.filter((a) => a.due_date < today).length;
   return (
     <div className="space-y-6">
@@ -126,25 +126,25 @@ function ReviewerDash({ user }: { user: User }) {
   );
 }
 
-function StaffDash() {
+async function StaffDash() {
   const s = (status: string) => count("SELECT COUNT(*) AS n FROM proposals WHERE status = ?", status);
-  const ready = all<Proposal>(
+  const ready = await all<Proposal>(
     `${PROPOSAL_SELECT}
       WHERE p.status = 'UNDER_REVIEW'
         AND NOT EXISTS (SELECT 1 FROM review_assignments a WHERE a.proposal_id = p.proposal_id
                           AND a.version_no = p.current_version AND a.status = 'PENDING')
       ORDER BY p.updated_at`,
   );
-  const queue = all<Proposal>(`${PROPOSAL_SELECT} WHERE p.status IN ('SUBMITTED','FOR_REVIEW') ORDER BY p.updated_at`);
+  const queue = await all<Proposal>(`${PROPOSAL_SELECT} WHERE p.status IN ('SUBMITTED','FOR_REVIEW') ORDER BY p.updated_at`);
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-        <Stat label="To check" value={s("SUBMITTED")} href="/proposals?status=SUBMITTED" />
-        <Stat label="To assign" value={s("FOR_REVIEW")} href="/proposals?status=FOR_REVIEW" />
-        <Stat label="Under review" value={s("UNDER_REVIEW")} href="/proposals?status=UNDER_REVIEW" />
-        <Stat label="Pending revisions" value={s("REVISION_REQUIRED") + s("INCOMPLETE")} href="/proposals?status=REVISION_REQUIRED" />
-        <Stat label="Approved" value={s("APPROVED")} href="/proposals?status=APPROVED" />
-        <Stat label="Overdue reviews" value={count("SELECT COUNT(*) AS n FROM review_assignments WHERE status='PENDING' AND due_date < ?", new Date().toISOString().slice(0, 10))} />
+        <Stat label="To check" value={await s("SUBMITTED")} href="/proposals?status=SUBMITTED" />
+        <Stat label="To assign" value={await s("FOR_REVIEW")} href="/proposals?status=FOR_REVIEW" />
+        <Stat label="Under review" value={await s("UNDER_REVIEW")} href="/proposals?status=UNDER_REVIEW" />
+        <Stat label="Pending revisions" value={(await s("REVISION_REQUIRED")) + (await s("INCOMPLETE"))} href="/proposals?status=REVISION_REQUIRED" />
+        <Stat label="Approved" value={await s("APPROVED")} href="/proposals?status=APPROVED" />
+        <Stat label="Overdue reviews" value={await count("SELECT COUNT(*) AS n FROM review_assignments WHERE status='PENDING' AND due_date < ?", new Date().toISOString().slice(0, 10))} />
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
         <Section title="Work queue (check / assign)">

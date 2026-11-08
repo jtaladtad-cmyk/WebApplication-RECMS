@@ -13,7 +13,7 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
   const password = str(form, "password");
   if (!email || !password) return { error: "Enter your email and password.", values: { email } };
 
-  const user = get<{ user_id: number; password_hash: string; is_active: number }>(
+  const user = await get<{ user_id: number; password_hash: string; is_active: number }>(
     "SELECT user_id, password_hash, is_active FROM users WHERE email = ?",
     email,
   );
@@ -43,10 +43,10 @@ export async function register(_: FormState, form: FormData): Promise<FormState>
   const problem = passwordProblem(password);
   if (problem) return { error: problem, values };
   if (password !== confirm) return { error: "Passwords do not match.", values };
-  if (get("SELECT 1 FROM users WHERE email = ?", values.email))
+  if (await get("SELECT 1 FROM users WHERE email = ?", values.email))
     return { error: "An account with that email already exists.", values };
 
-  const { lastId } = run(
+  const { lastId } = await run(
     "INSERT INTO users (full_name, email, password_hash, role, college, contact_no) VALUES (?, ?, ?, 'RESEARCHER', ?, ?)",
     values.full_name,
     values.email,
@@ -67,7 +67,7 @@ export async function updateProfile(form: FormData) {
   const user = await requireUser();
   const full_name = str(form, "full_name");
   if (!full_name) flash("/profile", { error: "Full name is required." });
-  run(
+  await run(
     "UPDATE users SET full_name = ?, college = ?, contact_no = ? WHERE user_id = ?",
     full_name,
     str(form, "college") || null,
@@ -79,13 +79,13 @@ export async function updateProfile(form: FormData) {
 
 export async function changePassword(form: FormData) {
   const user = await requireUser();
-  const row = get<{ password_hash: string }>("SELECT password_hash FROM users WHERE user_id = ?", user.user_id)!;
+  const row = (await get<{ password_hash: string }>("SELECT password_hash FROM users WHERE user_id = ?", user.user_id))!;
   const next = str(form, "new_password");
   if (!verifyPassword(str(form, "current_password"), row.password_hash))
     flash("/profile", { error: "Current password is incorrect." });
   const problem = passwordProblem(next);
   if (problem) flash("/profile", { error: problem });
   if (next !== str(form, "confirm")) flash("/profile", { error: "New passwords do not match." });
-  run("UPDATE users SET password_hash = ? WHERE user_id = ?", hashPassword(next), user.user_id);
+  await run("UPDATE users SET password_hash = ? WHERE user_id = ?", hashPassword(next), user.user_id);
   flash("/profile", { msg: "Password changed." });
 }

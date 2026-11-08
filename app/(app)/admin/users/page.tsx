@@ -14,7 +14,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Search
   const me = await requireUser("ADMIN");
   const sp = await searchParams;
   const role = typeof sp.role === "string" && (ROLES as readonly string[]).includes(sp.role) ? sp.role : "";
-  const users = all<{ user_id: number; full_name: string; email: string; role: string; college: string | null; is_active: number; created_at: string }>(
+  const users = await all<{ user_id: number; full_name: string; email: string; role: string; college: string | null; is_active: number; created_at: string }>(
     `SELECT user_id, full_name, email, role, college, is_active, created_at FROM users ${role ? "WHERE role = ?" : ""} ORDER BY role, full_name`,
     ...(role ? [role] : []),
   );

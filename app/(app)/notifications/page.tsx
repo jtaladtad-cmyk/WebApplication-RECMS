@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Notifications" };
 
 export default async function NotificationsPage({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireUser();
-  const rows = all<{ notification_id: number; proposal_id: number | null; message: string; is_read: number; created_at: string }>(
+  const rows = await all<{ notification_id: number; proposal_id: number | null; message: string; is_read: number; created_at: string }>(
     "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC, notification_id DESC LIMIT 200",
     user.user_id,
   );

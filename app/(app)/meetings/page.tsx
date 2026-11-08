@@ -11,14 +11,14 @@ export const metadata: Metadata = { title: "Review meetings" };
 
 export default async function MeetingsPage({ searchParams }: { searchParams: SearchParams }) {
   await requireUser("SECRETARIAT", "ADMIN");
-  const meetings = all<{ meeting_id: number; title: string; scheduled_at: string; venue: string; agenda: string | null; creator: string }>(
+  const meetings = await all<{ meeting_id: number; title: string; scheduled_at: string; venue: string; agenda: string | null; creator: string }>(
     `SELECT m.*, u.full_name AS creator FROM meetings m JOIN users u ON u.user_id = m.created_by ORDER BY m.scheduled_at DESC`,
   );
-  const items = all<{ meeting_id: number; proposal_id: number; reference_no: string; title: string; status: string }>(
+  const items = await all<{ meeting_id: number; proposal_id: number; reference_no: string; title: string; status: string }>(
     `SELECT mp.meeting_id, p.proposal_id, p.reference_no, p.title, p.status
        FROM meeting_proposals mp JOIN proposals p ON p.proposal_id = mp.proposal_id`,
   );
-  const candidates = all<{ proposal_id: number; reference_no: string; title: string; status: string }>(
+  const candidates = await all<{ proposal_id: number; reference_no: string; title: string; status: string }>(
     `SELECT proposal_id, reference_no, title, status FROM proposals
       WHERE status IN ('FOR_REVIEW','UNDER_REVIEW') ORDER BY updated_at`,
   );
