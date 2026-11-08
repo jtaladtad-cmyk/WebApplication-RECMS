@@ -13,7 +13,7 @@ notifications and reports into one system.
 Requires **Node.js 22.5+**, which is needed for `node:sqlite`.
 
 ```bash
-git clone <this repository's URL> recms
+git clone https://github.com/jtaladtad-cmyk/WebApplication-RECMS.git recms
 cd recms
 npm install
 npm run dev          # http://localhost:3000
