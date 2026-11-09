@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { login } from "@/app/actions/auth";
+import { PasswordInput } from "@/components/PasswordInput";
 
 const DEMO = [
   ["Researcher", "researcher@recms.local", "Researcher@123"],
@@ -23,7 +24,7 @@ export function LoginForm() {
         </div>
         <div>
           <label className="label" htmlFor="password">Password</label>
-          <input id="password" name="password" type="password" required autoComplete="current-password" className="input" />
+          <PasswordInput id="password" name="password" required autoComplete="current-password" className="input" />
         </div>
         <button className="btn w-full" disabled={pending}>{pending ? "Signing in…" : "Sign in"}</button>
         <p className="text-center text-sm text-slate-500">

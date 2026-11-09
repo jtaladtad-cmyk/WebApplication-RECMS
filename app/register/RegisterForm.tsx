@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { register } from "@/app/actions/auth";
+import { PasswordInput } from "@/components/PasswordInput";
 import { COLLEGES } from "@/lib/colleges";
 
 export function RegisterForm() {
@@ -35,11 +36,11 @@ export function RegisterForm() {
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="label" htmlFor="password">Password</label>
-          <input id="password" name="password" type="password" required minLength={8} autoComplete="new-password" className="input" />
+          <PasswordInput id="password" name="password" required minLength={8} autoComplete="new-password" className="input" />
         </div>
         <div>
           <label className="label" htmlFor="confirm">Confirm password</label>
-          <input id="confirm" name="confirm" type="password" required minLength={8} autoComplete="new-password" className="input" />
+          <PasswordInput id="confirm" name="confirm" required minLength={8} autoComplete="new-password" className="input" />
         </div>
       </div>
       <p className="text-xs text-slate-500">At least 8 characters with letters and numbers.</p>
