@@ -46,7 +46,17 @@ export async function buildReport(f: ReportFilter) {
     `SELECT strftime('%Y-%m', p.submitted_at) AS month, COUNT(*) AS submitted, SUM(p.status = 'APPROVED') AS approved
        FROM proposals p WHERE 1=1 ${r.sql} GROUP BY month ORDER BY month`, ...r.params);
 
+  const rr = range(f, "r.submitted_at");
+  const postApproval = await all<{ report_type: string; n: number; open: number }>(
+    `SELECT r.report_type, COUNT(*) AS n, SUM(r.status = 'SUBMITTED') AS open
+       FROM post_approval_reports r WHERE 1=1 ${rr.sql} GROUP BY r.report_type ORDER BY n DESC`, ...rr.params);
+  const declined = await get<{ n: number; coi: number }>(
+    `SELECT COUNT(*) AS n, COALESCE(SUM(coi_declared), 0) AS coi FROM review_assignments WHERE status = 'DECLINED'`);
+
   return {
+    postApproval,
+    declinedAssignments: Number(declined?.n) || 0,
+    conflictsDeclared: Number(declined?.coi) || 0,
     total,
     approved: n("APPROVED"),
     underReview: n("UNDER_REVIEW") + n("FOR_REVIEW"),

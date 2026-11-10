@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export function AuthShell({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (
     <main className="flex min-h-screen">
@@ -13,7 +15,7 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
             ethics clearance — all in one place.
           </p>
         </div>
-        <div className="text-xs text-brand-100/60">RECMS · Marist Avenue, General Santos City</div>
+        <div className="text-xs text-brand-100/60">RECMS · Marist Avenue, General Santos City · <Link href="/privacy" className="underline">Privacy notice</Link> · <Link href="/verify" className="underline">Verify a clearance</Link></div>
       </aside>
       <section className="flex flex-1 items-center justify-center p-6">
         <div className="w-full max-w-md">
@@ -23,6 +25,9 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
           <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
           <p className="mb-6 mt-1 text-sm text-slate-500">{subtitle}</p>
           {children}
+          <p className="mt-8 text-center text-xs text-slate-500 lg:hidden">
+            <Link href="/privacy" className="link">Privacy notice</Link> · <Link href="/verify" className="link">Verify a clearance</Link>
+          </p>
         </div>
       </section>
     </main>

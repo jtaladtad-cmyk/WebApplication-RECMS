@@ -1,7 +1,9 @@
 import "server-only";
-import { all, get, run } from "./db";
+import { afterCommit, all, get, run } from "./db";
+import { appUrl, mailEnabled, sendMail } from "./mail";
+import { isoDateIn } from "./format";
 import type { User } from "./auth";
-import type { ProposalStatus } from "./schema";
+import type { ProposalStatus, StudyStatus } from "./schema";
 
 export type Proposal = {
   proposal_id: number;
@@ -20,6 +22,11 @@ export type Proposal = {
   current_version: number;
   submitted_at: string;
   updated_at: string;
+  study_status: StudyStatus;
+  involves_minors: number;
+  needs_translation: number;
+  uses_instruments: number;
+  vulnerable_groups: string | null;
 };
 
 export type Assignment = {
@@ -30,9 +37,13 @@ export type Assignment = {
   version_no: number;
   assigned_at: string;
   due_date: string;
-  status: "PENDING" | "SUBMITTED";
+  status: "PENDING" | "SUBMITTED" | "DECLINED";
+  accepted_at: string | null;
+  coi_declared: number;
+  coi_details: string | null;
   recommendation: string | null;
   comments: string | null;
+  assessment: string | null;
   submitted_at: string | null;
 };
 
@@ -53,7 +64,7 @@ export function getAssignments(proposalId: number): Promise<Assignment[]> {
   );
 }
 
-/** Who may see a proposal: its researcher, staff, or a reviewer assigned to it. */
+/** Who may see a proposal: its researcher, staff, or a reviewer who accepted an assignment on it. */
 export async function canViewProposal(
   user: User,
   p: Pick<Proposal, "proposal_id" | "researcher_id">,
@@ -61,14 +72,26 @@ export async function canViewProposal(
   if (user.role === "ADMIN" || user.role === "SECRETARIAT") return true;
   if (user.role === "RESEARCHER") return p.researcher_id === user.user_id;
   return !!(await get(
-    "SELECT 1 FROM review_assignments WHERE proposal_id = ? AND reviewer_id = ?",
+    `SELECT 1 FROM review_assignments
+      WHERE proposal_id = ? AND reviewer_id = ? AND accepted_at IS NOT NULL AND status <> 'DECLINED'`,
     p.proposal_id,
     user.user_id,
   ));
 }
 
+/** In-app notification, plus an email when email is configured (sent after the transaction commits). */
 export async function notify(userId: number, message: string, proposalId: number | null = null) {
   await run("INSERT INTO notifications (user_id, proposal_id, message) VALUES (?, ?, ?)", userId, proposalId, message);
+  if (!mailEnabled()) return;
+  const u = await get<{ email: string; full_name: string; is_active: number }>(
+    "SELECT email, full_name, is_active FROM users WHERE user_id = ?",
+    userId,
+  );
+  if (!u || !Number(u.is_active)) return;
+  const link = `${appUrl()}${proposalId ? `/proposals/${proposalId}` : "/notifications"}`;
+  const subject = `RECMS: ${message.length > 70 ? message.slice(0, 67) + "..." : message}`;
+  const body = `Hello ${u.full_name},\n\n${message}\n\nOpen RECMS: ${link}\n\nThis is an automated message from the NDDU Ethics Research Committee Management System.`;
+  afterCommit(() => sendMail(u.email, subject, body));
 }
 
 export async function notifyStaff(message: string, proposalId: number | null = null) {
@@ -119,6 +142,29 @@ export async function sendDeadlineReminders() {
     await notify(a.reviewer_id, `Reminder: your review of ${a.reference_no} is due on ${a.due_date}.`, a.proposal_id);
     await run("UPDATE review_assignments SET reminder_sent = 1 WHERE assignment_id = ?", a.assignment_id);
   }
+
+  // Ethics clearances of active studies that expire within 30 days.
+  const expiring = await all<{ clearance_id: number; clearance_no: string; valid_until: string; proposal_id: number; researcher_id: number }>(
+    `SELECT c.clearance_id, c.clearance_no, c.valid_until, p.proposal_id, p.researcher_id
+       FROM ethics_clearances c JOIN proposals p ON p.proposal_id = c.proposal_id
+      WHERE c.expiry_reminder_sent = 0 AND p.study_status = 'ACTIVE' AND c.valid_until <= ?`,
+    isoDateIn(30),
+  );
+  for (const c of expiring) {
+    await notify(
+      c.researcher_id,
+      `Your ethics clearance ${c.clearance_no} ${c.valid_until < isoDateIn(0) ? "expired" : "expires"} on ${c.valid_until}. Submit a progress report (continuing review) to renew it, or a final report if the study is finished.`,
+      c.proposal_id,
+    );
+    await run("UPDATE ethics_clearances SET expiry_reminder_sent = 1 WHERE clearance_id = ?", c.clearance_id);
+  }
+}
+
+/** Validity of a clearance for display and public verification. */
+export function clearanceState(validUntil: string, studyStatus: StudyStatus): "VALID" | "EXPIRED" | "COMPLETED" | "TERMINATED" {
+  if (studyStatus === "COMPLETED") return "COMPLETED";
+  if (studyStatus === "TERMINATED") return "TERMINATED";
+  return validUntil < isoDateIn(0) ? "EXPIRED" : "VALID";
 }
 
 export async function unreadCount(userId: number): Promise<number> {

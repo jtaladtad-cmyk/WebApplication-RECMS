@@ -44,6 +44,13 @@ export function RegisterForm() {
         </div>
       </div>
       <p className="text-xs text-slate-500">At least 8 characters with letters and numbers.</p>
+      <label className="flex items-start gap-2 text-sm text-slate-700">
+        <input type="checkbox" name="privacy_consent" value="1" required className="mt-1" />
+        <span>
+          I have read the <Link href="/privacy" target="_blank" className="link">Privacy Notice</Link> and agree to the processing of my
+          personal data for ethics review, under the Data Privacy Act of 2012 (RA 10173).
+        </span>
+      </label>
       <button className="btn w-full" disabled={pending}>{pending ? "Creating account…" : "Create account"}</button>
       <p className="text-center text-sm text-slate-500">
         Already registered? <Link href="/login" className="link">Sign in</Link>

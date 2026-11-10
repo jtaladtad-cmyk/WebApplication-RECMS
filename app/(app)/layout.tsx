@@ -15,6 +15,7 @@ const NAV: Record<Role, { href: string; label: string }[]> = {
   SECRETARIAT: [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/proposals", label: "Proposals" },
+    { href: "/post-approval", label: "Post-approval" },
     { href: "/meetings", label: "Meetings" },
     { href: "/reports", label: "Reports" },
   ],
@@ -25,9 +26,11 @@ const NAV: Record<Role, { href: string; label: string }[]> = {
   ADMIN: [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/proposals", label: "Proposals" },
+    { href: "/post-approval", label: "Post-approval" },
     { href: "/meetings", label: "Meetings" },
     { href: "/reports", label: "Reports" },
     { href: "/admin/users", label: "Accounts" },
+    { href: "/admin/audit", label: "Activity log" },
   ],
 };
 

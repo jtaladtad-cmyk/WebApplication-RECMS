@@ -39,7 +39,7 @@ Researchers can also self-register at `/register`. Reviewer and secretariat acco
 | ------------------ | --------------------------------------------------------- |
 | `npm run build && npm start` | Production build / server                       |
 | `npm run reset-db` | Delete the database and uploaded files (re-seeds on next start) |
-| `npm run test:e2e` | Browser walkthrough of every feature (needs a fresh DB and a server on :3100) |
+| `npm run test:e2e` | Browser walkthrough of every feature, 119 checks (needs a fresh DB and a server on :3100; see the top of `tests/e2e.cjs`) |
 
 Uploaded files are stored in `data/uploads/` and served only through an access-checked route. In production,
 session cookies are `Secure` (HTTPS only). If you must serve it over plain HTTP on a LAN for a demo, set
@@ -81,6 +81,21 @@ session cookies are `Secure` (HTTPS only). If you must serve it over plain HTTP 
 - [x] Role-based access control: Researcher / Secretariat / Reviewer / Admin
 - [x] Admin account management: create accounts, change roles, deactivate users, reset passwords
 
+**Added from research on ethics review standards** (2022 National Ethical Guidelines for Research Involving
+Human Participants, the PHREB SOP Workbook and the WHO standards for ethics committees):
+
+- [x] **Post-approval submissions:** amendments, progress reports / continuing review, protocol deviations and violations, serious adverse events (SAE), final reports and early termination, each with its own form. The secretariat approves, acknowledges or asks for changes.
+- [x] **Clearance expiry and renewal:** the researcher is reminded 30 days before the clearance expires. An approved progress report renews it for a year. Final and termination reports close the study.
+- [x] **Conflict-of-interest declaration:** reviewers accept or decline each assignment, declare any conflict and agree to confidentiality before they can see the protocol. Declined assignments are flagged for reassignment.
+- [x] **Structured assessment forms:** a protocol assessment and an informed consent assessment (Yes / No / Unclear / N/A with notes). Researchers see the flagged items.
+- [x] **Meeting attendance, quorum, votes and minutes:** quorum is a majority of active ERC members. Members with a conflict are excused from voting.
+- [x] **Point-by-point response letter:** when revising, the researcher answers each reviewer's comments, and reviewers see the answers.
+- [x] **Data Privacy Act (RA 10173):** a public privacy notice, and consent is required at registration. The retention period is set in `lib/privacy.ts`; confirm it with the ERC / DPO.
+- [x] **Clearance verification:** each certificate has a QR code and link to a public page that confirms it is genuine and still valid.
+- [x] **Email notifications:** every in-app notification is also emailed once SMTP is configured (see below).
+- [x] **Required-documents checklist by research type:** endorsement for student research, assent forms for minors, translations and instruments, enforced at submission and shown during the completeness check.
+- [x] **Activity log:** sign-ins (including failed ones), submissions, reviews, decisions, downloads, meetings and account changes, with IP address. Admins can search it.
+
 **Security notes:** passwords are hashed with scrypt; sessions are random tokens stored hashed in the database
 in `httpOnly` cookies. Every page, action and download checks the user's role and ownership server-side.
 Reviewer identities are hidden from researchers.
@@ -97,6 +112,15 @@ to the Vercel project (**Settings → Environment Variables**), then redeploy:
 | `BLOB_READ_WRITE_TOKEN` | Vercel **Storage → Create → Blob** (connects automatically) |
 
 Without these variables the app still runs locally, using `data/`, but it won't work on Vercel.
+
+**Email (optional):** set `SMTP_HOST`, `SMTP_PORT` (default 587), `SMTP_USER`, `SMTP_PASS` and `SMTP_FROM`.
+Use `SMTP_SECURE=1` for port 465. For a Google Workspace account such as an nddu.edu.ph address, that's
+`smtp.gmail.com`, port 587, with an app password. `APP_URL` sets the link in emails; on Vercel the production
+URL is used automatically. Without SMTP, only in-app notifications are sent. For local testing,
+`RECMS_MAIL_LOG=1` prints emails to the server log instead.
+
+**Database upgrades:** schema changes are applied automatically on startup by the migrations in
+`lib/schema.ts`. Existing data, including a live Turso database, is upgraded in place.
 The first request on an empty Turso database creates the tables and the demo accounts.
 
 ## Project layout

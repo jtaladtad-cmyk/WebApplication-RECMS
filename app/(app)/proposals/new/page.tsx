@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth";
-import { RESEARCH_TYPES } from "@/lib/schema";
 import { COLLEGES } from "@/lib/colleges";
-import { label } from "@/lib/format";
 import { submitProposal } from "@/app/actions/proposals";
-import { DocInputs } from "@/components/DocInputs";
+import { NewSubmissionFields } from "@/components/NewSubmissionFields";
 import { SubmitButton } from "@/components/SubmitButton";
 import { Flash, PageHeader, Section, type SearchParams } from "@/components/ui";
 
@@ -24,13 +22,6 @@ export default async function NewProposal({ searchParams }: { searchParams: Sear
               <input id="title" name="title" required maxLength={300} className="input" />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="label" htmlFor="research_type">Research type *</label>
-                <select id="research_type" name="research_type" required className="input" defaultValue="">
-                  <option value="" disabled>Select…</option>
-                  {RESEARCH_TYPES.map((t) => <option key={t} value={t}>{label(t)}</option>)}
-                </select>
-              </div>
               <div>
                 <label className="label" htmlFor="college">College / Unit *</label>
                 <select id="college" name="college" required className="input" defaultValue={user.college ?? ""}>
@@ -53,9 +44,7 @@ export default async function NewProposal({ searchParams }: { searchParams: Sear
             </div>
           </div>
         </Section>
-        <Section title="2. Supporting documents">
-          <DocInputs requireCore />
-        </Section>
+        <NewSubmissionFields />
         <div className="flex justify-end">
           <SubmitButton pendingText="Submitting…">Submit for ethics review</SubmitButton>
         </div>

@@ -26,7 +26,7 @@ export default async function MeetingsPage({ searchParams }: { searchParams: Sea
 
   return (
     <>
-      <PageHeader title="Review meetings" subtitle="Schedule full-board meetings and put proposals on the agenda. Researchers and assigned reviewers are notified." />
+      <PageHeader title="Review meetings" subtitle="Schedule full-board meetings and put proposals on the agenda. All ERC members and the researchers concerned are notified. Open a meeting to record attendance, quorum, votes and minutes." />
       <Flash searchParams={searchParams} />
       <div className="grid gap-6 lg:grid-cols-5">
         <div className="min-w-0 lg:col-span-2">
@@ -62,7 +62,7 @@ export default async function MeetingsPage({ searchParams }: { searchParams: Sea
               <div key={m.meeting_id} className="card">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
-                    <div className="font-semibold">{m.title}</div>
+                    <Link href={`/meetings/${m.meeting_id}`} className="link font-semibold">{m.title}</Link>
                     <div className="text-sm text-slate-600">{fmtDate(meetingDate(m.scheduled_at).toISOString())} · {m.venue}</div>
                   </div>
                   <div className="flex items-center gap-2">

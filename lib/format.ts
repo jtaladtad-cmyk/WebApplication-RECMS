@@ -27,6 +27,15 @@ export const STATUS_STYLE: Record<string, string> = {
   APPROVED: "bg-emerald-100 text-emerald-800",
   DISAPPROVED: "bg-rose-100 text-rose-800",
   PENDING: "bg-slate-100 text-slate-700",
+  AWAITING_RESPONSE: "bg-amber-100 text-amber-800",
+  DECLINED: "bg-slate-200 text-slate-600",
+  ACKNOWLEDGED: "bg-emerald-100 text-emerald-800",
+  ACTIVE: "bg-emerald-100 text-emerald-800",
+  COMPLETED: "bg-sky-100 text-sky-800",
+  TERMINATED: "bg-slate-200 text-slate-700",
+  VALID: "bg-emerald-100 text-emerald-800",
+  EXPIRED: "bg-rose-100 text-rose-800",
+  SAE: "bg-rose-100 text-rose-800",
 };
 
 export const STATUS_HELP: Record<string, string> = {

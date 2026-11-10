@@ -10,10 +10,10 @@ export const metadata: Metadata = { title: "My reviews" };
 export default async function ReviewsPage({ searchParams }: { searchParams: SearchParams }) {
   const user = await requireUser("REVIEWER");
   const today = new Date().toISOString().slice(0, 10);
-  const rows = await all<{ assignment_id: number; reference_no: string; title: string; review_type: string | null; version_no: number; due_date: string; status: string; recommendation: string | null; assigned_at: string }>(
-    `SELECT a.assignment_id, p.reference_no, p.title, p.review_type, a.version_no, a.due_date, a.status, a.recommendation, a.assigned_at
+  const rows = await all<{ assignment_id: number; reference_no: string; title: string; review_type: string | null; version_no: number; due_date: string; status: string; recommendation: string | null; assigned_at: string; accepted_at: string | null }>(
+    `SELECT a.assignment_id, p.reference_no, p.title, p.review_type, a.version_no, a.due_date, a.status, a.recommendation, a.assigned_at, a.accepted_at
        FROM review_assignments a JOIN proposals p ON p.proposal_id = a.proposal_id
-      WHERE a.reviewer_id = ? ORDER BY a.status = 'SUBMITTED', a.due_date`,
+      WHERE a.reviewer_id = ? ORDER BY a.status <> 'PENDING', a.accepted_at IS NOT NULL, a.due_date`,
     user.user_id,
   );
   return (
@@ -32,9 +32,9 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Sear
                   <td>v{r.version_no}</td>
                   <td className="whitespace-nowrap text-slate-500">{fmtDate(r.assigned_at)}</td>
                   <td className={`whitespace-nowrap ${r.status === "PENDING" && r.due_date < today ? "font-semibold text-rose-700" : ""}`}>{fmtDate(r.due_date)}</td>
-                  <td><Badge value={r.status} /></td>
+                  <td><Badge value={r.status === "PENDING" && !r.accepted_at ? "AWAITING_RESPONSE" : r.status} /></td>
                   <td><Badge value={r.recommendation} /></td>
-                  <td><Link className="link whitespace-nowrap" href={`/reviews/${r.assignment_id}`}>{r.status === "PENDING" ? "Review →" : "View"}</Link></td>
+                  <td><Link className="link whitespace-nowrap" href={`/reviews/${r.assignment_id}`}>{r.status === "PENDING" ? (r.accepted_at ? "Review →" : "Respond →") : "View"}</Link></td>
                 </tr>
               ))}
             </tbody>

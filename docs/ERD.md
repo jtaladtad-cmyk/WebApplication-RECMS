@@ -17,6 +17,16 @@ source of truth is [`lib/schema.ts`](../lib/schema.ts).
 | Review meetings           | `meetings`, `meeting_proposals`            |
 | Notifications / tracking  | `notifications`, `status_history`          |
 | Login                     | `sessions`                                 |
+| Post-approval submissions (amendments, progress reports, deviations, SAEs, final reports, early termination) | `post_approval_reports` |
+| Researcher's response letter | `revision_responses`                    |
+| Meeting attendance and votes | `meeting_attendance`, `meeting_votes`   |
+| Activity log              | `audit_log`                                |
+| Schema version            | `schema_migrations`                        |
+
+Additions in migration 2 (see `MIGRATIONS` in `lib/schema.ts`): reviewer conflict-of-interest
+declaration and structured assessment on `review_assignments`; study status and ethics screening answers
+on `proposals`; verification code on `ethics_clearances`; minutes on `meetings`; privacy consent on
+`users`; documents can belong to a proposal version **or** a post-approval report.
 
 ```mermaid
 erDiagram
@@ -40,6 +50,16 @@ erDiagram
     PROPOSALS ||--o{ NOTIFICATIONS : "about"
     PROPOSALS ||--o{ STATUS_HISTORY : "tracks"
     USERS ||--o{ STATUS_HISTORY : "changes"
+    PROPOSALS ||--o{ POST_APPROVAL_REPORTS : "has"
+    USERS ||--o{ POST_APPROVAL_REPORTS : "submits / decides"
+    POST_APPROVAL_REPORTS ||--o{ DOCUMENTS : "attaches"
+    REVIEW_ASSIGNMENTS ||--o{ REVISION_RESPONSES : "answered by"
+    PROPOSALS ||--o{ REVISION_RESPONSES : "has"
+    MEETINGS ||--o{ MEETING_ATTENDANCE : "records"
+    USERS ||--o{ MEETING_ATTENDANCE : "attends"
+    MEETING_PROPOSALS ||--o{ MEETING_VOTES : "voted on"
+    USERS ||--o{ MEETING_VOTES : "casts"
+    USERS ||--o{ AUDIT_LOG : "performs"
 
     USERS {
         int user_id PK
@@ -50,6 +70,7 @@ erDiagram
         varchar college
         varchar contact_no
         int is_active
+        datetime privacy_consent_at
         datetime created_at
     }
     SESSIONS {
@@ -70,6 +91,11 @@ erDiagram
         varchar review_type "EXEMPT | EXPEDITED | FULL_BOARD"
         varchar status
         int current_version
+        varchar study_status "ACTIVE | COMPLETED | TERMINATED"
+        int involves_minors
+        int needs_translation
+        int uses_instruments
+        text vulnerable_groups
         datetime submitted_at
         datetime updated_at
     }
@@ -82,7 +108,8 @@ erDiagram
     }
     DOCUMENTS {
         int document_id PK
-        int version_id FK
+        int version_id FK "or report_id"
+        int report_id FK "or version_id"
         varchar doc_type
         varchar file_name
         varchar stored_name UK
@@ -107,9 +134,13 @@ erDiagram
         int version_no
         int assigned_by FK
         date due_date
-        varchar status "PENDING | SUBMITTED"
+        varchar status "PENDING | SUBMITTED | DECLINED"
+        datetime accepted_at
+        int coi_declared
+        text coi_details
         varchar recommendation
         text comments
+        text assessment "JSON checklist"
         datetime submitted_at
         int reminder_sent
     }
@@ -129,6 +160,8 @@ erDiagram
         int issued_by FK
         datetime issued_at
         date valid_until
+        varchar verification_code UK
+        int expiry_reminder_sent
     }
     MEETINGS {
         int meeting_id PK
@@ -136,6 +169,8 @@ erDiagram
         datetime scheduled_at
         varchar venue
         text agenda
+        text minutes
+        int held
         int created_by FK
     }
     MEETING_PROPOSALS {
@@ -148,6 +183,47 @@ erDiagram
         int proposal_id FK
         text message
         int is_read
+        datetime created_at
+    }
+    POST_APPROVAL_REPORTS {
+        int report_id PK
+        int proposal_id FK
+        varchar report_type "AMENDMENT | PROGRESS | DEVIATION | SAE | FINAL | TERMINATION"
+        int submitted_by FK
+        text summary
+        text details "JSON fields per type"
+        date event_date
+        varchar status "SUBMITTED | APPROVED | ACKNOWLEDGED | REVISION_REQUIRED | DISAPPROVED"
+        text decision_remarks
+        int decided_by FK
+        datetime decided_at
+        datetime submitted_at
+    }
+    REVISION_RESPONSES {
+        int response_id PK
+        int proposal_id FK
+        int version_no
+        int assignment_id FK
+        text response
+    }
+    MEETING_ATTENDANCE {
+        int meeting_id PK,FK
+        int user_id PK,FK
+    }
+    MEETING_VOTES {
+        int meeting_id PK,FK
+        int proposal_id PK,FK
+        int user_id PK,FK
+        varchar vote "APPROVE | MINOR_REVISION | MAJOR_REVISION | DISAPPROVE | ABSTAIN"
+    }
+    AUDIT_LOG {
+        int log_id PK
+        int user_id FK
+        varchar action
+        varchar entity_type
+        int entity_id
+        text details
+        varchar ip_address
         datetime created_at
     }
     STATUS_HISTORY {
@@ -169,6 +245,9 @@ erDiagram
 - **Proposals** and **reviewers** are many-to-many. `review_assignments` resolves this per version: `UNIQUE(proposal_id, reviewer_id, version_no)`.
 - **Meetings** and **proposals** are many-to-many, resolved by `meeting_proposals` (composite PK).
 - One **proposal** has at most one **ethics clearance** (1:0..1, `UNIQUE(proposal_id)`).
+- One approved **proposal** has many **post-approval reports** (1:N); each report can have attachments.
+- Each **revision response** answers one **review assignment** from the previous version (1:N over versions).
+- **Meeting votes** belong to an agenda item (`meeting_proposals`) and a member; members who declared a conflict of interest on that proposal cannot vote.
 
 ## Integrity constraints
 
@@ -190,6 +269,20 @@ stateDiagram-v2
     UNDER_REVIEW --> REVISION_REQUIRED: ERC requires revision
     UNDER_REVIEW --> DISAPPROVED: ERC disapproves
     REVISION_REQUIRED --> SUBMITTED: researcher submits revised version
-    APPROVED --> [*]: ethics clearance issued
+    APPROVED --> [*]: ethics clearance issued (study ACTIVE)
     DISAPPROVED --> [*]
 ```
+
+## Approved study lifecycle (post-approval)
+
+```mermaid
+stateDiagram-v2
+    [*] --> ACTIVE: proposal approved
+    ACTIVE --> ACTIVE: amendment approved / deviation or SAE acknowledged
+    ACTIVE --> ACTIVE: progress report approved (clearance renewed 1 year)
+    ACTIVE --> COMPLETED: final report acknowledged
+    ACTIVE --> TERMINATED: early termination acknowledged
+```
+
+A clearance is shown as **expired** once `valid_until` passes while the study is still active. The
+researcher is reminded 30 days before expiry.

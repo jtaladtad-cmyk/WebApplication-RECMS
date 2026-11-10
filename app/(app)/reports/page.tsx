@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth";
 import { buildReport } from "@/lib/reports";
 import { label } from "@/lib/format";
+import { REPORT_META } from "@/lib/postApproval";
 import { Badge, PageHeader, Section, Stat, type SearchParams } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Reports" };
@@ -91,6 +92,20 @@ export default async function ReportsPage({ searchParams }: { searchParams: Sear
           <div className="mt-4 text-xs text-slate-500">
             Review types: {r.byType.map((t) => `${label(t.review_type ?? "UNASSIGNED")} ${t.n}`).join(" · ") || "—"}
           </div>
+          <div className="mt-1 text-xs text-slate-500">
+            Reviewer assignments declined: {r.declinedAssignments} ({r.conflictsDeclared} because of a conflict of interest)
+          </div>
+        </Section>
+        <Section title="Post-approval reports">
+          <table className="table">
+            <thead><tr><th>Type</th><th className="text-right">Submitted</th><th className="text-right">Awaiting action</th></tr></thead>
+            <tbody>
+              {r.postApproval.map((x) => (
+                <tr key={x.report_type}><td>{REPORT_META[x.report_type as keyof typeof REPORT_META]?.label ?? x.report_type}</td><td className="text-right">{x.n}</td><td className="text-right">{Number(x.open) || 0}</td></tr>
+              ))}
+              {r.postApproval.length === 0 && <tr><td colSpan={3} className="text-slate-500">No data.</td></tr>}
+            </tbody>
+          </table>
         </Section>
       </div>
     </>
